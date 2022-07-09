@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.2.32526.322
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DriveThru", "DriveThru\DriveThru.csproj", "{84CFE66E-4321-4DC9-86B6-F4AF6164B75B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{84CFE66E-4321-4DC9-86B6-F4AF6164B75B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{84CFE66E-4321-4DC9-86B6-F4AF6164B75B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{84CFE66E-4321-4DC9-86B6-F4AF6164B75B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{84CFE66E-4321-4DC9-86B6-F4AF6164B75B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {89F2F050-B616-4990-8062-F088BD4D4CE2}
+	EndGlobalSection
+EndGlobal
