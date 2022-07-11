@@ -12,6 +12,7 @@ namespace DriveThru.Controllers
         private static List<Pedidos> pedidos = new List<Pedidos>();
         private static List<Pedidos> fazendo = new List<Pedidos>();
         private static List<Pedidos> finalizado = new List<Pedidos>();
+        private static List<Pedidos> retirar = new List<Pedidos>();
 
         private static int countDtforBalcao = 0;
         private static int countDtforDelivery = 0;
@@ -53,89 +54,106 @@ namespace DriveThru.Controllers
         }
 
         [HttpPatch("{senha}")]
-        public async Task<ActionResult<Pedidos>> AlterarPedido(int senha, [FromBody] Pedidos pedido)
+        public async Task<ActionResult<Pedidos>> AlterarPedido(int senha, [FromBody] eOrigemPedido origemPedido)
         {
             var oldPedido = pedidos.Find(a => a.Senha == senha);
 
-            if (oldPedido == null) return BadRequest();
+            if (oldPedido == null) return NotFound();
 
-            pedidos.Remove(oldPedido);
+            var pedido = oldPedido;
 
-            pedido.StatusPedido = eStatusPedido.Alterado;
+            if (origemPedido is eOrigemPedido.DriveThru || origemPedido is eOrigemPedido.Balcao || origemPedido is eOrigemPedido.Delivery)
+            {
 
-            pedidos.Add(pedido);
-            return Ok(pedido);
+
+                pedido.OrigemPedido = origemPedido;
+                pedido.StatusPedido = eStatusPedido.Alterado;
+
+                pedidos.Remove(oldPedido);
+                pedidos.Add(pedido);
+                return Ok(pedido);
+            }
+            return BadRequest();
         }
 
         [HttpPatch("fazer")]
         public async Task<ActionResult<List<Pedidos>>> FazerPedido()
         {
 
-            var count = 0;
+            var count = fazendo.Count;
+            if (count == 3) return BadRequest();
             foreach (var pedido in pedidos)
             {
-
-                if (count == 3) return BadRequest();
-
                 if (pedido.StatusPedido == eStatusPedido.Aguardando || pedido.StatusPedido == eStatusPedido.Alterado)
                 {
                     pedido.StatusPedido = eStatusPedido.Fazendo;
                     fazendo.Add(pedido);
                     return Ok(fazendo);
                 }
-                if (pedido.StatusPedido == eStatusPedido.Fazendo)
-                {
-
-                    fazendo.Add(pedido);
-
-                    count++;
-                }
-
             }
             return NotFound();
         }
 
         [HttpPatch("finalizar")]
-        public async Task<ActionResult<List<Pedidos>>> FinalizarPedido()
+        public async Task<ActionResult> FinalizarPedido()
         {
             if (fazendo.Count == 0) return NotFound();
+            var fazendoAux = new List<Pedidos>();
             foreach (var pedido in fazendo)
             {
-                var pedidosAux = pedidos.Find(a => a.Senha == pedido.Senha);
-                pedidosAux.StatusPedido = eStatusPedido.Finalizado;
-                fazendo.Remove(pedido);
-                finalizado.Add(pedidosAux);
+                if (pedido.OrigemPedido == eOrigemPedido.Delivery)
+                {
+                    pedidos.Find(a => a.Senha == pedido.Senha).StatusPedido = eStatusPedido.Finalizado;
+                    finalizado.Add(pedido);
+                    fazendoAux.Remove(pedido);
+                }
+                else
+                {
+                    pedidos.Find(a => a.Senha == pedido.Senha).StatusPedido = eStatusPedido.Pronto;
+                    retirar.Add(pedido);
+                    fazendoAux.Remove(pedido);
+                }
             }
-            return Ok(finalizado);
+            fazendo = fazendoAux;
+            return Ok("Todos os pedidos foram finalizados.");
         }
 
         [HttpPatch("entregar")]
         public async Task<ActionResult<List<Pedidos>>> EntregaPedido()
         {
-            var count = 0;
             List<Pedidos> entregando = new List<Pedidos>();
-            List<Pedidos> finalizadoAux = finalizado;
-            foreach (var pedido in finalizadoAux)
+            List<Pedidos> finalizadoAux = new List<Pedidos>();
+            foreach (var pedido in finalizado)
             {
-                if (pedido.OrigemPedido != eOrigemPedido.Delivery) continue;
-
+                pedido.StatusPedido = eStatusPedido.Pronto;
                 entregando.Add(pedido);
-                finalizadoAux.Remove(pedido);
-                count++;
 
-                if (count == 3)
+                if (entregando.Count == 3)
                 {
-
-                    finalizado = finalizadoAux;
-                    //foreach (var item in collection)
-                    //{
-
-                    //}
+                    foreach (var item in entregando)
+                    {
+                        finalizado.Remove(item);
+                        pedidos.Find(a => a.Senha == item.Senha).StatusPedido = eStatusPedido.Pronto;
+                    }
 
                     return Ok(entregando);
                 }
             }
             return NotFound();
+        }
+
+        [HttpDelete("{senha}")]
+        public async Task<ActionResult<List<Pedidos>>> RetirarPedido(int senha)
+        {
+
+            var pedido = retirar.Find(a => a.Senha == senha);
+
+            if (pedido == null) return NotFound();
+
+            retirar.Remove(pedido);
+
+            return Ok($"Pedido {senha} entregue.");
+
         }
     }
 }
