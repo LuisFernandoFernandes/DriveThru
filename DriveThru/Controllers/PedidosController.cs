@@ -4,156 +4,218 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace DriveThru.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/pedidos")]
     [ApiController]
     public class PedidosController : ControllerBase
     {
 
-        private static List<Pedidos> pedidos = new List<Pedidos>();
-        private static List<Pedidos> fazendo = new List<Pedidos>();
-        private static List<Pedidos> finalizado = new List<Pedidos>();
-        private static List<Pedidos> retirar = new List<Pedidos>();
+        private static List<Pedido> _pedidos = new List<Pedido>();
+        private static List<Pedido> _fazendo = new List<Pedido>();
+        private static List<Pedido> _finalizado = new List<Pedido>();
 
-        private static int countDtforBalcao = 0;
-        private static int countDtforDelivery = 0;
-        private static int countBalcaforDelivery = 0;
+        private static int _countDtforBalcao = 0;
+        private static int _countDtforDelivery = 0;
+        private static int _countBalcaforDelivery = 0;
 
-        [HttpPost]
-        public async Task<ActionResult<Pedidos>> RealizarPedido(eOrigemPedido origemPedido)
+
+        [HttpGet]
+        public ActionResult<List<Pedido>> RealizarPedido()
         {
-            if (countDtforBalcao == 2 && origemPedido != eOrigemPedido.Balcao) return BadRequest();
-            if ((countDtforDelivery == 3 || countBalcaforDelivery == 2) && origemPedido != eOrigemPedido.Delivery) return BadRequest();
-            else
+            try
             {
-                if (origemPedido == eOrigemPedido.DriveThru)
+                if (_pedidos.Count() == 0)
                 {
-                    countDtforBalcao++;
-                    countDtforDelivery++;
-                }
-                else if (origemPedido == eOrigemPedido.Balcao)
-                {
-                    countDtforBalcao = 0;
-                    countBalcaforDelivery++;
+                    return NotFound("Nenhum pedido encontrado");
                 }
                 else
                 {
-                    countDtforDelivery = 0;
-                    countBalcaforDelivery = 0;
+                    return Ok(_pedidos);
                 }
+
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
             }
 
-            Pedidos pedido = new Pedidos
-            {
-                Senha = pedidos.Count,
-                OrigemPedido = origemPedido,
-                StatusPedido = eStatusPedido.Aguardando
-            };
+        }
 
-            pedidos.Add(pedido);
-            return Ok(pedido);
+        [HttpPost]
+        public ActionResult<Pedido> RealizarPedido(eOrigemPedido origemPedido)
+        {
+            try
+            {
+                if (origemPedido != null)
+                {
+
+
+                    Pedido pedido = new Pedido
+                    {
+                        Senha = _pedidos.Count + 1,
+                        OrigemPedido = origemPedido,
+                        StatusPedido = eStatusPedido.Aguardando
+                    };
+
+                    _pedidos.Add(pedido);
+                    return Ok(pedido);
+                }
+                return BadRequest("Escolha como seu pedido será entregue.");
+
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
+
         }
 
         [HttpPatch("{senha}")]
-        public async Task<ActionResult<Pedidos>> AlterarPedido(int senha, [FromBody] eOrigemPedido origemPedido)
+        public ActionResult<Pedido> AlterarPedido(int senha)
         {
-            var oldPedido = pedidos.Find(a => a.Senha == senha);
 
-            if (oldPedido == null) return NotFound();
-
-            var pedido = oldPedido;
-
-            if (origemPedido is eOrigemPedido.DriveThru || origemPedido is eOrigemPedido.Balcao || origemPedido is eOrigemPedido.Delivery)
+            try
             {
+                var oldPedido = _pedidos.Find(a => a.Senha == senha);
 
+                if (oldPedido == null) return NotFound("Nenhum pedido corresponde a senha informada.");
 
-                pedido.OrigemPedido = origemPedido;
+                var pedido = oldPedido;
+
                 pedido.StatusPedido = eStatusPedido.Alterado;
 
-                pedidos.Remove(oldPedido);
-                pedidos.Add(pedido);
+                _pedidos.Remove(oldPedido);
+                _pedidos.Add(pedido);
                 return Ok(pedido);
             }
-            return BadRequest();
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
+
         }
 
         [HttpPatch("fazer")]
-        public async Task<ActionResult<List<Pedidos>>> FazerPedido()
+        public ActionResult<List<Pedido>> FazerPedido()
         {
-
-            var count = fazendo.Count;
-            if (count == 3) return BadRequest();
-            foreach (var pedido in pedidos)
+            try
             {
-                if (pedido.StatusPedido == eStatusPedido.Aguardando || pedido.StatusPedido == eStatusPedido.Alterado)
+
+
+                var count = _fazendo.Count;
+                if (count == 3) return BadRequest("A cozinha já está preparando o maxímo de pedidos possível.");
+                foreach (var pedido in _pedidos)
                 {
-                    pedido.StatusPedido = eStatusPedido.Fazendo;
-                    fazendo.Add(pedido);
-                    return Ok(fazendo);
+                    if (pedido.StatusPedido == eStatusPedido.Aguardando || pedido.StatusPedido == eStatusPedido.Alterado)
+                    {
+
+                        if (_countDtforBalcao == 2 && pedido.OrigemPedido != eOrigemPedido.Balcao) continue;
+                        else if ((_countDtforDelivery == 3 || _countBalcaforDelivery == 2) && pedido.OrigemPedido != eOrigemPedido.Delivery) continue;
+                        else
+                        {
+                            if (pedido.OrigemPedido == eOrigemPedido.DriveThru)
+                            {
+                                _countDtforBalcao++;
+                                _countDtforDelivery++;
+                            }
+                            else if (pedido.OrigemPedido == eOrigemPedido.Balcao)
+                            {
+                                _countDtforBalcao = 0;
+                                _countBalcaforDelivery++;
+                            }
+                            else
+                            {
+                                _countDtforDelivery = 0;
+                                _countBalcaforDelivery = 0;
+                            }
+                        }
+
+                        pedido.StatusPedido = eStatusPedido.Fazendo;
+                        _fazendo.Add(pedido);
+                        return Ok(_fazendo);
+                    }
+                    continue;
                 }
+                return NotFound();
             }
-            return NotFound();
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
+
 
         [HttpPatch("finalizar")]
-        public async Task<ActionResult> FinalizarPedido()
+        public ActionResult FinalizarPedido()
         {
-            if (fazendo.Count == 0) return NotFound();
-            var fazendoAux = new List<Pedidos>();
-            foreach (var pedido in fazendo)
+            try
             {
-                if (pedido.OrigemPedido == eOrigemPedido.Delivery)
-                {
-                    pedidos.Find(a => a.Senha == pedido.Senha).StatusPedido = eStatusPedido.Finalizado;
-                    finalizado.Add(pedido);
-                    fazendoAux.Remove(pedido);
-                }
-                else
-                {
-                    pedidos.Find(a => a.Senha == pedido.Senha).StatusPedido = eStatusPedido.Pronto;
-                    retirar.Add(pedido);
-                    fazendoAux.Remove(pedido);
-                }
+
+                if (_fazendo.Count == 0) return NotFound("Todos os pedidos em preparo já foram finalizados.");
+
+                var pedido = _fazendo.FirstOrDefault();
+                _fazendo.Remove(pedido);
+                pedido.StatusPedido = eStatusPedido.Pronto;
+                _finalizado.Add(pedido);
+
+                return Ok("Todos os pedidos foram finalizados.");
+
             }
-            fazendo = fazendoAux;
-            return Ok("Todos os pedidos foram finalizados.");
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
-        [HttpPatch("entregar")]
-        public async Task<ActionResult<List<Pedidos>>> EntregaPedido()
+        [HttpDelete("entregar")]
+        public ActionResult<List<Pedido>> EntregaPedido()
         {
-            List<Pedidos> entregando = new List<Pedidos>();
-            List<Pedidos> finalizadoAux = new List<Pedidos>();
-            foreach (var pedido in finalizado)
+            try
             {
-                pedido.StatusPedido = eStatusPedido.Pronto;
-                entregando.Add(pedido);
-
-                if (entregando.Count == 3)
+                List<Pedido> entregando = new List<Pedido>();
+                List<Pedido> finalizadoAux = new List<Pedido>();
+                foreach (var pedido in _finalizado)
                 {
-                    foreach (var item in entregando)
-                    {
-                        finalizado.Remove(item);
-                        pedidos.Find(a => a.Senha == item.Senha).StatusPedido = eStatusPedido.Pronto;
-                    }
+                    pedido.StatusPedido = eStatusPedido.Pronto;
+                    entregando.Add(pedido);
 
-                    return Ok(entregando);
+                    if (entregando.Count == 3)
+                    {
+                        foreach (var item in entregando)
+                        {
+                            _finalizado.Remove(item);
+                            _pedidos.Find(a => a.Senha == item.Senha).StatusPedido = eStatusPedido.Entregue;
+                        }
+
+                        return Ok(entregando);
+                    }
                 }
+                return NotFound("Não há pedidos prontos o suficiente para realizar a entrega.");
             }
-            return NotFound();
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
         [HttpDelete("{senha}")]
-        public async Task<ActionResult<List<Pedidos>>> RetirarPedido(int senha)
+        public ActionResult<List<Pedido>> RetirarPedido(int senha)
         {
+            try
+            {
 
-            var pedido = retirar.Find(a => a.Senha == senha);
+                var pedido = _finalizado.Find(a => a.Senha == senha && a.OrigemPedido != eOrigemPedido.Delivery);
 
-            if (pedido == null) return NotFound();
+                if (pedido == null) return NotFound("A senha informada não corresponde a de um pedido pronto para retirada.");
 
-            retirar.Remove(pedido);
+                _finalizado.Remove(pedido);
 
-            return Ok($"Pedido {senha} entregue.");
+                return Ok($"Pedido {senha} entregue.");
 
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
     }
 }

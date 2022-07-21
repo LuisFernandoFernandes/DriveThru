@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace DriveThru.Enums
+﻿namespace DriveThru.Enums
 {
     public enum eOrigemPedido
     {

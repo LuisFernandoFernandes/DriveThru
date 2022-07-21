@@ -5,7 +5,7 @@
         Aguardando = 0,
         Alterado = 1,
         Fazendo = 2,
-        Finalizado = 3,
-        Pronto = 4,
+        Pronto = 3,
+        Entregue = 4,
     }
 }
