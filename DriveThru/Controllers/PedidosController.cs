@@ -13,6 +13,7 @@ namespace DriveThru.Controllers
         private static List<Pedido> _fazendo = new List<Pedido>();
         private static List<Pedido> _finalizado = new List<Pedido>();
 
+
         private static int _countDtforBalcao = 0;
         private static int _countDtforDelivery = 0;
         private static int _countBalcaforDelivery = 0;
@@ -41,18 +42,47 @@ namespace DriveThru.Controllers
         }
 
         [HttpPost]
-        public ActionResult<Pedido> RealizarPedido(eOrigemPedido origemPedido)
+        public ActionResult<Pedido> RealizarPedido(string origemPedido)
         {
             try
             {
-                if (origemPedido != null)
+                var values = Enum.GetValues(typeof(eOrigemPedido));
+                int numberEnumOrigem;
+                var result = int.TryParse(origemPedido, out numberEnumOrigem);
+                if (result)
                 {
+                    if (values.Length <= numberEnumOrigem || numberEnumOrigem < 0)
+                    {
+                        return NotFound("Escolha uma forma válida de entrega.");
+                    }
+                }
+                else
+                {
+                    var upper = origemPedido.ToUpper();
+                    numberEnumOrigem = values.Length;
+                    foreach (eOrigemPedido item in values)
+                    {
+                        var description = EnumDescription.GetEnumDescription(item).ToUpper();
+                        if (upper == description || upper == "BALCAO")
+                        {
+                            numberEnumOrigem = (int)item;
+                            break;
+                        }
+                    }
+                }
+
+                if (numberEnumOrigem == values.Length)
+                {
+                    return NotFound("Escolha uma forma válida de entrega.");
+                }
 
 
+                if (Enum.IsDefined(typeof(eOrigemPedido), (eOrigemPedido)numberEnumOrigem))
+                {
                     Pedido pedido = new Pedido
                     {
                         Senha = _pedidos.Count + 1,
-                        OrigemPedido = origemPedido,
+                        OrigemPedido = (eOrigemPedido)numberEnumOrigem,
                         StatusPedido = eStatusPedido.Aguardando
                     };
 
