@@ -46,43 +46,14 @@ namespace DriveThru.Controllers
         {
             try
             {
-                var values = Enum.GetValues(typeof(eOrigemPedido));
-                int numberEnumOrigem;
-                var result = int.TryParse(origemPedido, out numberEnumOrigem);
-                if (result)
-                {
-                    if (values.Length <= numberEnumOrigem || numberEnumOrigem < 0)
-                    {
-                        return NotFound("Escolha uma forma válida de entrega.");
-                    }
-                }
-                else
-                {
-                    var upper = origemPedido.ToUpper();
-                    numberEnumOrigem = values.Length;
-                    foreach (eOrigemPedido item in values)
-                    {
-                        var description = EnumDescription.GetEnumDescription(item).ToUpper();
-                        if (upper == description || upper == "BALCAO")
-                        {
-                            numberEnumOrigem = (int)item;
-                            break;
-                        }
-                    }
-                }
+                var result = Enum.TryParse(origemPedido.Replace("ã", "a", true, null), true, out eOrigemPedido origem);
 
-                if (numberEnumOrigem == values.Length)
-                {
-                    return NotFound("Escolha uma forma válida de entrega.");
-                }
-
-
-                if (Enum.IsDefined(typeof(eOrigemPedido), (eOrigemPedido)numberEnumOrigem))
+                if (result && (int)origem >= 0 && (int)origem <= 2)
                 {
                     Pedido pedido = new Pedido
                     {
                         Senha = _pedidos.Count + 1,
-                        OrigemPedido = (eOrigemPedido)numberEnumOrigem,
+                        OrigemPedido = origem,
                         StatusPedido = eStatusPedido.Aguardando
                     };
 
