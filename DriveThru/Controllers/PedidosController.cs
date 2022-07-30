@@ -1,5 +1,6 @@
 ﻿using DriveThru.Enums;
 using DriveThru.Models;
+using DriveThru.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DriveThru.Controllers
@@ -9,214 +10,72 @@ namespace DriveThru.Controllers
     public class PedidosController : ControllerBase
     {
 
+        private readonly IPedidosService _service;
+
         private static List<Pedido> _pedidos = new List<Pedido>();
         private static List<Pedido> _fazendo = new List<Pedido>();
         private static List<Pedido> _finalizado = new List<Pedido>();
 
-
-        private static int _countDtforBalcao = 0;
-        private static int _countDtforDelivery = 0;
-        private static int _countBalcaforDelivery = 0;
-
+        public PedidosController()
+        {
+            _service = new PedidosService();
+        }
 
         [HttpGet]
-        public ActionResult<List<Pedido>> RealizarPedido()
+        public ActionResult<List<Pedido>> VisualizarPedidos()
         {
-            try
-            {
-                if (_pedidos.Count() == 0)
-                {
-                    return NotFound("Nenhum pedido encontrado");
-                }
-                else
-                {
-                    return Ok(_pedidos);
-                }
 
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
-
+            var result = _service.Visualizar(_pedidos);
+            return StatusCode(result.Item1, result.Item2);
         }
 
         [HttpPost]
         public ActionResult<Pedido> RealizarPedido(string origemPedido)
         {
-            try
-            {
-                var result = Enum.TryParse(origemPedido.Replace("ã", "a", true, null), true, out eOrigemPedido origem);
 
-                if (result && (int)origem >= 0 && (int)origem <= 2)
-                {
-                    Pedido pedido = new Pedido
-                    {
-                        Senha = _pedidos.Count + 1,
-                        OrigemPedido = origem,
-                        StatusPedido = eStatusPedido.Aguardando
-                    };
-
-                    _pedidos.Add(pedido);
-                    return Ok(pedido);
-                }
-                return BadRequest("Escolha como seu pedido será entregue.");
-
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
-
+            var result = _service.Realizar(_pedidos, origemPedido);
+            return StatusCode(result.Item1, result.Item2);
         }
 
         [HttpPatch("{senha}")]
         public ActionResult<Pedido> AlterarPedido(int senha)
         {
 
-            try
-            {
-                var oldPedido = _pedidos.Find(a => a.Senha == senha);
-
-                if (oldPedido == null) return NotFound("Nenhum pedido corresponde a senha informada.");
-
-                var pedido = oldPedido;
-
-                pedido.StatusPedido = eStatusPedido.Alterado;
-
-                _pedidos.Remove(oldPedido);
-                _pedidos.Add(pedido);
-                return Ok(pedido);
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
-
+            var result = _service.Alterar(_pedidos, senha);
+            return StatusCode(result.Item1, result.Item2);
         }
 
         [HttpPatch("fazer")]
         public ActionResult<List<Pedido>> FazerPedido()
         {
-            try
-            {
 
-
-                var count = _fazendo.Count;
-                if (count == 3) return BadRequest("A cozinha já está preparando o maxímo de pedidos possível.");
-                foreach (var pedido in _pedidos)
-                {
-                    if (pedido.StatusPedido == eStatusPedido.Aguardando || pedido.StatusPedido == eStatusPedido.Alterado)
-                    {
-
-                        if (_countDtforBalcao == 2 && pedido.OrigemPedido != eOrigemPedido.Balcao) continue;
-                        else if ((_countDtforDelivery == 3 || _countBalcaforDelivery == 2) && pedido.OrigemPedido != eOrigemPedido.Delivery) continue;
-                        else
-                        {
-                            if (pedido.OrigemPedido == eOrigemPedido.DriveThru)
-                            {
-                                _countDtforBalcao++;
-                                _countDtforDelivery++;
-                            }
-                            else if (pedido.OrigemPedido == eOrigemPedido.Balcao)
-                            {
-                                _countDtforBalcao = 0;
-                                _countBalcaforDelivery++;
-                            }
-                            else
-                            {
-                                _countDtforDelivery = 0;
-                                _countBalcaforDelivery = 0;
-                            }
-                        }
-
-                        pedido.StatusPedido = eStatusPedido.Fazendo;
-                        _fazendo.Add(pedido);
-                        return Ok(_fazendo);
-                    }
-                    continue;
-                }
-                return NotFound();
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
+            var result = _service.Fazer(_pedidos, _fazendo);
+            return StatusCode(result.Item1, result.Item2);
         }
 
 
         [HttpPatch("finalizar")]
         public ActionResult FinalizarPedido()
         {
-            try
-            {
 
-                if (_fazendo.Count == 0) return NotFound("Todos os pedidos em preparo já foram finalizados.");
-
-                var pedido = _fazendo.FirstOrDefault();
-                _fazendo.Remove(pedido);
-                pedido.StatusPedido = eStatusPedido.Pronto;
-                _finalizado.Add(pedido);
-
-                return Ok("Todos os pedidos foram finalizados.");
-
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
+            var result = _service.Finalizar(_fazendo, _finalizado, _pedidos);
+            return StatusCode(result.Item1, result.Item2);
         }
 
         [HttpDelete("entregar")]
         public ActionResult<List<Pedido>> EntregaPedido()
         {
-            try
-            {
-                List<Pedido> entregando = new List<Pedido>();
-                List<Pedido> finalizadoAux = new List<Pedido>();
-                foreach (var pedido in _finalizado)
-                {
-                    pedido.StatusPedido = eStatusPedido.Pronto;
-                    entregando.Add(pedido);
 
-                    if (entregando.Count == 3)
-                    {
-                        foreach (var item in entregando)
-                        {
-                            _finalizado.Remove(item);
-                            _pedidos.Find(a => a.Senha == item.Senha).StatusPedido = eStatusPedido.Entregue;
-                        }
-
-                        return Ok(entregando);
-                    }
-                }
-                return NotFound("Não há pedidos prontos o suficiente para realizar a entrega.");
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
+            var result = _service.Entregar(_finalizado, _pedidos);
+            return StatusCode(result.Item1, result.Item2);
         }
 
         [HttpDelete("{senha}")]
         public ActionResult<List<Pedido>> RetirarPedido(int senha)
         {
-            try
-            {
 
-                var pedido = _finalizado.Find(a => a.Senha == senha && a.OrigemPedido != eOrigemPedido.Delivery);
-
-                if (pedido == null) return NotFound("A senha informada não corresponde a de um pedido pronto para retirada.");
-
-                _finalizado.Remove(pedido);
-
-                return Ok($"Pedido {senha} entregue.");
-
-            }
-            catch (Exception)
-            {
-                return Problem("Algo deu errado, contate o administrador.");
-            }
+            var result = _service.Retirar(senha, _finalizado, _pedidos);
+            return StatusCode(result.Item1, result.Item2);
         }
     }
 }
