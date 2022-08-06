@@ -24,58 +24,137 @@ namespace DriveThru.Controllers
         [HttpGet]
         public ActionResult<List<Pedido>> VisualizarPedidos()
         {
+            try
+            {
+                return Ok(_service.Visualizar(_pedidos));
+            }
+            catch (ArgumentNullException)
+            {
+                return NotFound("Nenhum pedido encontrado");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
 
-            var result = _service.Visualizar(_pedidos);
-            return StatusCode(result.Item1, result.Item2);
         }
 
         [HttpPost]
         public ActionResult<Pedido> RealizarPedido(string origemPedido)
         {
-
-            var result = _service.Realizar(_pedidos, origemPedido);
-            return StatusCode(result.Item1, result.Item2);
+            try
+            {
+                return Ok(_service.Realizar(_pedidos, origemPedido));
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest("Escolha como seu pedido será entregue.");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
         [HttpPatch("{senha}")]
         public ActionResult<Pedido> AlterarPedido(int senha)
         {
+            try
+            {
+                return Ok(_service.Alterar(_pedidos, senha));
+            }
+            catch (ArgumentNullException)
+            {
 
-            var result = _service.Alterar(_pedidos, senha);
-            return StatusCode(result.Item1, result.Item2);
+                return NotFound("Nenhum pedido corresponde a senha informada.");
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest("Esse pedido já não pode mais ser alterado.");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
         [HttpPatch("fazer")]
         public ActionResult<List<Pedido>> FazerPedido()
         {
 
-            var result = _service.Fazer(_pedidos, _fazendo);
-            return StatusCode(result.Item1, result.Item2);
+            try
+            {
+                return Ok(_service.Fazer(_pedidos, _fazendo));
+            }
+            catch (ArgumentNullException)
+            {
+                return NotFound("Nenhum pedido está aguardando preparo.");
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest("A cozinha já está preparando o maxímo de pedidos possível.");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
 
         [HttpPatch("finalizar")]
         public ActionResult FinalizarPedido()
         {
-
-            var result = _service.Finalizar(_fazendo, _finalizado, _pedidos);
-            return StatusCode(result.Item1, result.Item2);
+            try
+            {
+                return Ok(_service.Finalizar(_fazendo, _finalizado, _pedidos));
+            }
+            catch (ArgumentNullException)
+            {
+                return NotFound("Não há pedidos para finalizar.");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
         [HttpDelete("entregar")]
         public ActionResult<List<Pedido>> EntregaPedido()
         {
-
-            var result = _service.Entregar(_finalizado, _pedidos);
-            return StatusCode(result.Item1, result.Item2);
+            try
+            {
+                return Ok(_service.Entregar(_finalizado, _pedidos));
+            }
+            catch (ArgumentNullException)
+            {
+                return NotFound("Não há pedidos prontos para serem entreges.");
+            }
+            catch (ArgumentException)
+            {
+                return BadRequest("Não há pedidos prontos o suficiente para realizar a entrega.");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
         }
 
         [HttpDelete("{senha}")]
         public ActionResult<List<Pedido>> RetirarPedido(int senha)
         {
+            try
+            {
+                return Ok(_service.Retirar(senha, _finalizado, _pedidos));
+            }
+            catch (ArgumentNullException)
+            {
+                return NotFound("A senha informada não corresponde a de um pedido pronto para retirada.");
+            }
+            catch (Exception)
+            {
+                return Problem("Algo deu errado, contate o administrador.");
+            }
 
-            var result = _service.Retirar(senha, _finalizado, _pedidos);
-            return StatusCode(result.Item1, result.Item2);
         }
     }
 }

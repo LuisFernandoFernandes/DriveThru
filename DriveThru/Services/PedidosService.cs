@@ -13,231 +13,179 @@ namespace DriveThru.Services
         private static int _countBalcaforDelivery = 0;
 
 
-        public Tuple<int, object> Visualizar(List<Pedido> pedidos)
+        public List<Pedido> Visualizar(List<Pedido> pedidos)
         {
-            try
+            if (pedidos.Count() == 0)
             {
-                if (pedidos.Count() == 0)
-                {
-                    return (StatusCodes.Status404NotFound, "Nenhum pedido encontrado").ToTuple<int, object>();
-                }
-                else
-                {
-                    return (StatusCodes.Status200OK, pedidos).ToTuple<int, object>();
-                }
-
+                throw new ArgumentNullException();
             }
-            catch (Exception)
+            else
             {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
+                return pedidos;
             }
         }
 
-        public Tuple<int, object> Realizar(List<Pedido> pedidos, string origemPedido)
+        public Pedido Realizar(List<Pedido> pedidos, string origemPedido)
         {
-            try
+            var result = Enum.TryParse(origemPedido.Replace("ã", "a", true, null), true, out eOrigemPedido origem);
+
+            if (result && (int)origem >= 0 && (int)origem <= 2)
             {
-                var result = Enum.TryParse(origemPedido.Replace("ã", "a", true, null), true, out eOrigemPedido origem);
-
-                if (result && (int)origem >= 0 && (int)origem <= 2)
+                Pedido pedido = new Pedido
                 {
-                    Pedido pedido = new Pedido
-                    {
-                        Senha = pedidos.Count + 1,
-                        OrigemPedido = origem,
-                        StatusPedido = eStatusPedido.Aguardando
-                    };
+                    Senha = pedidos.Count + 1,
+                    OrigemPedido = origem,
+                    StatusPedido = eStatusPedido.Aguardando
+                };
 
-                    pedidos.Add(pedido);
-                    return (StatusCodes.Status200OK, pedido).ToTuple<int, object>();
-                }
-                return (StatusCodes.Status404NotFound, "Escolha como seu pedido será entregue.").ToTuple<int, object>();
-
-            }
-            catch (Exception)
-            {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
-            }
-        }
-
-        public Tuple<int, object> Alterar(List<Pedido> pedidos, int senha)
-        {
-            try
-            {
-                var oldPedido = pedidos.Find(a => a.Senha == senha);
-
-                if (oldPedido == null)
-                {
-                    return (StatusCodes.Status404NotFound, "Nenhum pedido corresponde a senha informada.").ToTuple<int, object>();
-                }
-                if (oldPedido.StatusPedido != eStatusPedido.Aguardando)
-                {
-                    return (StatusCodes.Status400BadRequest, "Esse pedido já não pode mais ser alterado.").ToTuple<int, object>();
-                }
-
-                var pedido = oldPedido;
-
-                pedido.StatusPedido = eStatusPedido.Alterado;
-
-                pedidos.Remove(oldPedido);
                 pedidos.Add(pedido);
-                return (StatusCodes.Status200OK, pedido).ToTuple<int, object>();
+                return pedido;
             }
-            catch (Exception)
+            else
             {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
+                throw new ArgumentException();
             }
-
         }
 
-        public Tuple<int, object> Fazer(List<Pedido> pedidos, List<Pedido> fazendo)
+        public Pedido Alterar(List<Pedido> pedidos, int senha)
         {
-            try
+
+            var oldPedido = pedidos.Find(a => a.Senha == senha);
+
+            if (oldPedido == null)
             {
-                if (pedidos.Count(a => a.StatusPedido == eStatusPedido.Alterado) == 0 && pedidos.Count(a => a.StatusPedido == eStatusPedido.Aguardando) == 0)
-                {
-                    return (StatusCodes.Status404NotFound, "Nenhum pedido está aguardando preparo.").ToTuple<int, object>();
-                }
+                throw new ArgumentNullException();
+            }
+            if (oldPedido.StatusPedido != eStatusPedido.Aguardando)
+            {
+                throw new ArgumentException();
+            }
 
-                var count = fazendo.Count;
+            var pedido = oldPedido;
 
-                if (count == 3)
-                {
-                    return (StatusCodes.Status400BadRequest, "A cozinha já está preparando o maxímo de pedidos possível.").ToTuple<int, object>();
-                }
+            pedido.StatusPedido = eStatusPedido.Alterado;
 
-                foreach (var pedido in pedidos)
+            pedidos.Remove(oldPedido);
+            pedidos.Add(pedido);
+            return pedido;
+        }
+
+        public List<Pedido> Fazer(List<Pedido> pedidos, List<Pedido> fazendo)
+        {
+
+            if (pedidos.Count(a => a.StatusPedido == eStatusPedido.Alterado) == 0 && pedidos.Count(a => a.StatusPedido == eStatusPedido.Aguardando) == 0)
+            {
+                throw new ArgumentNullException();
+            }
+
+            var count = fazendo.Count;
+
+            if (count == 3)
+            {
+                throw new ArgumentException();
+            }
+
+            foreach (var pedido in pedidos)
+            {
+                if (pedido.StatusPedido == eStatusPedido.Aguardando || pedido.StatusPedido == eStatusPedido.Alterado)
                 {
-                    if (pedido.StatusPedido == eStatusPedido.Aguardando || pedido.StatusPedido == eStatusPedido.Alterado)
+
+                    if (_countDtforBalcao == 2 && pedido.OrigemPedido != eOrigemPedido.Balcao)
                     {
-
-                        if (_countDtforBalcao == 2 && pedido.OrigemPedido != eOrigemPedido.Balcao)
+                        continue;
+                    }
+                    else if ((_countDtforDelivery == 3 || _countBalcaforDelivery == 2) && pedido.OrigemPedido != eOrigemPedido.Delivery)
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        if (pedido.OrigemPedido == eOrigemPedido.DriveThru)
                         {
-                            continue;
+                            _countDtforBalcao++;
+                            _countDtforDelivery++;
                         }
-                        else if ((_countDtforDelivery == 3 || _countBalcaforDelivery == 2) && pedido.OrigemPedido != eOrigemPedido.Delivery)
+                        else if (pedido.OrigemPedido == eOrigemPedido.Balcao)
                         {
-                            continue;
+                            _countDtforBalcao = 0;
+                            _countBalcaforDelivery++;
                         }
                         else
                         {
-                            if (pedido.OrigemPedido == eOrigemPedido.DriveThru)
-                            {
-                                _countDtforBalcao++;
-                                _countDtforDelivery++;
-                            }
-                            else if (pedido.OrigemPedido == eOrigemPedido.Balcao)
-                            {
-                                _countDtforBalcao = 0;
-                                _countBalcaforDelivery++;
-                            }
-                            else
-                            {
-                                _countDtforDelivery = 0;
-                                _countBalcaforDelivery = 0;
-                            }
+                            _countDtforDelivery = 0;
+                            _countBalcaforDelivery = 0;
                         }
-
-                        pedido.StatusPedido = eStatusPedido.Fazendo;
-                        fazendo.Add(pedido);
-                        return (StatusCodes.Status200OK, fazendo).ToTuple<int, object>();
-
                     }
-                    continue;
+
+                    pedido.StatusPedido = eStatusPedido.Fazendo;
+                    fazendo.Add(pedido);
+                    return fazendo;
                 }
-                return (StatusCodes.Status404NotFound, "Nenhum pedido está aguardando preparo.").ToTuple<int, object>();
+                continue;
             }
-            catch (Exception)
-            {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
-            }
+            throw new KeyNotFoundException();
         }
 
-        public Tuple<int, object> Finalizar(List<Pedido> fazendo, List<Pedido> finalizado, List<Pedido> pedidos)
+        public string Finalizar(List<Pedido> fazendo, List<Pedido> finalizado, List<Pedido> pedidos)
         {
-            try
+            if (fazendo.Count == 0)
             {
-
-                if (fazendo.Count == 0)
-                {
-                    return new Tuple<int, object>(StatusCodes.Status404NotFound, "Não há pedidos para finalizar.");
-                }
-
-
-                var pedido = fazendo.FirstOrDefault();
-                fazendo.Remove(pedido);
-                pedido.StatusPedido = eStatusPedido.Pronto;
-                pedidos.Find(a => a.Senha == pedido.Senha).StatusPedido = eStatusPedido.Pronto;
-                finalizado.Add(pedido);
-
-                return new Tuple<int, object>(StatusCodes.Status200OK, $"Pedido {pedido.Senha} foi finalizados.");
-
-
+                throw new ArgumentNullException();
             }
-            catch (Exception)
-            {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
-            }
+
+            var pedido = fazendo.FirstOrDefault();
+            fazendo.Remove(pedido);
+            pedido.StatusPedido = eStatusPedido.Pronto;
+            pedidos.Find(a => a.Senha == pedido.Senha).StatusPedido = eStatusPedido.Pronto;
+            finalizado.Add(pedido);
+
+            return $"Pedido {pedido.Senha} foi finalizados.";
         }
 
-        public Tuple<int, object> Entregar(List<Pedido> finalizado, List<Pedido> pedidos)
+        public List<Pedido> Entregar(List<Pedido> finalizado, List<Pedido> pedidos)
         {
-            try
-            {
-                if (finalizado.Count(a => a.OrigemPedido == eOrigemPedido.Delivery) == 0)
-                {
-                    return (StatusCodes.Status404NotFound, "Não há pedidos prontos para serem entreges.").ToTuple<int, object>();
-                }
 
-                List<Pedido> entregando = new List<Pedido>();
-                foreach (var pedido in finalizado)
+            if (finalizado.Count(a => a.OrigemPedido == eOrigemPedido.Delivery) == 0)
+            {
+                throw new ArgumentNullException();
+            }
+
+            List<Pedido> entregando = new List<Pedido>();
+            foreach (var pedido in finalizado)
+            {
+                if (pedido.OrigemPedido == eOrigemPedido.Delivery)
                 {
-                    if (pedido.OrigemPedido == eOrigemPedido.Delivery)
+                    entregando.Add(pedido);
+
+                    if (entregando.Count == 3)
                     {
-                        entregando.Add(pedido);
-
-                        if (entregando.Count == 3)
+                        foreach (var item in entregando)
                         {
-                            foreach (var item in entregando)
-                            {
-                                finalizado.Remove(item);
-                                pedidos.Find(a => a.Senha == item.Senha).StatusPedido = eStatusPedido.Entregue;
-                            }
-                            return (StatusCodes.Status200OK, entregando).ToTuple<int, object>();
+                            finalizado.Remove(item);
+                            pedidos.Find(a => a.Senha == item.Senha).StatusPedido = eStatusPedido.Entregue;
                         }
+                        return entregando;
                     }
-
                 }
-                return (StatusCodes.Status404NotFound, "Não há pedidos prontos o suficiente para realizar a entrega.").ToTuple<int, object>();
+
             }
-            catch (Exception)
-            {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
-            }
+            throw new ArgumentException();
         }
 
-        public Tuple<int, object> Retirar(int senha, List<Pedido> finalizado, List<Pedido> pedidos)
+        public string Retirar(int senha, List<Pedido> finalizado, List<Pedido> pedidos)
         {
-            try
+
+            var pedido = finalizado.Find(a => a.Senha == senha && a.OrigemPedido != eOrigemPedido.Delivery);
+
+            if (pedido == null)
             {
-
-                var pedido = finalizado.Find(a => a.Senha == senha && a.OrigemPedido != eOrigemPedido.Delivery);
-
-                if (pedido == null)
-                {
-                    return (StatusCodes.Status404NotFound, "A senha informada não corresponde a de um pedido pronto para retirada.").ToTuple<int, object>();
-                }
-
-                pedidos.Find(a => a.Senha == senha && a.OrigemPedido != eOrigemPedido.Delivery).StatusPedido = eStatusPedido.Entregue;
-                finalizado.Remove(pedido);
-                return (StatusCodes.Status200OK, $"Pedido {senha} entregue.").ToTuple<int, object>();
-
+                throw new ArgumentNullException();
             }
-            catch (Exception)
-            {
-                return (StatusCodes.Status500InternalServerError, "Algo deu errado, contate o administrador.").ToTuple<int, object>();
-            }
+
+            pedidos.Find(a => a.Senha == senha && a.OrigemPedido != eOrigemPedido.Delivery).StatusPedido = eStatusPedido.Entregue;
+            finalizado.Remove(pedido);
+            return $"Pedido {senha} entregue.";
         }
-
     }
 }
+
